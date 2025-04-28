@@ -1,9 +1,10 @@
-
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { FaShoppingCart } from 'react-icons/fa';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -51,92 +52,109 @@ const Auth = () => {
 
   if (isResetting) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-full max-w-md space-y-8 p-6">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold">Redefinir Senha</h2>
-            <p className="text-sm text-muted-foreground mt-2">Digite seu e-mail para redefinir sua senha</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#181A20]">
+        <div className="w-full max-w-sm bg-[#23263A] rounded-2xl shadow-lg p-8 flex flex-col items-center">
+          <div className="bg-[#7C3AED] rounded-full p-4 mb-6">
+            <FaShoppingCart size={32} color="#fff" />
           </div>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium">
-                E-mail
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2"
-              />
-            </div>
-            <div className="flex gap-4">
-              <Button type="submit" className="flex-1">
-                Enviar Link
-              </Button>
-              <Button type="button" variant="outline" onClick={() => setIsResetting(false)} className="flex-1">
-                Voltar
-              </Button>
-            </div>
+          <h2 className="text-2xl font-bold text-white mb-2">
+            Redefinir Senha
+          </h2>
+          <form onSubmit={handleSubmit} className="w-full space-y-4 mt-4">
+            <input
+              id="email"
+              type="email"
+              required
+              placeholder="E-mail"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-md border-none bg-[#181A20] text-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#7C3AED]"
+            />
+            <Button
+              type="submit"
+              className="w-full bg-[#7C3AED] hover:bg-[#a78bfa] text-white font-bold py-3 rounded-md transition"
+            >
+              Enviar Link
+            </Button>
           </form>
+          <button
+            type="button"
+            onClick={() => setIsResetting(false)}
+            className="mt-2 text-xs text-[#a78bfa] hover:text-white transition"
+          >
+            Voltar
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="w-full max-w-md space-y-8 p-6">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold">{isLogin ? 'Entrar no ListaÊ' : 'Criar uma conta'}</h2>
+    <div className="min-h-screen flex items-center justify-center bg-[#181A20]">
+      <div className="w-full max-w-sm bg-[#23263A] rounded-2xl shadow-lg p-8 flex flex-col items-center">
+        <div className="bg-[#7C3AED] rounded-full p-4 mb-6">
+          <FaShoppingCart size={32} color="#fff" />
         </div>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium">
-              E-mail
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2"
-            />
-          </div>
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium">
-              Senha
-            </label>
+        <h2 className="text-2xl font-bold text-white mb-2">
+          {isLogin ? 'Entrar no ListaÊ' : 'Criar uma conta'}
+        </h2>
+        <form onSubmit={handleSubmit} className="w-full space-y-4 mt-4">
+          <input
+            id="email"
+            type="email"
+            required
+            placeholder="E-mail"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded-md border-none bg-[#181A20] text-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#7C3AED]"
+          />
+          {!isResetting && (
             <input
               id="password"
               type="password"
               required
+              placeholder="Senha"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-input bg-background px-3 py-2"
+              className="w-full rounded-md border-none bg-[#181A20] text-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#7C3AED]"
             />
-          </div>
-          {isLogin && (
+          )}
+          {isLogin && !isResetting && (
             <button
               type="button"
               onClick={() => setIsResetting(true)}
-              className="text-sm text-primary hover:underline"
+              className="text-xs text-[#7C3AED] hover:underline text-right w-full"
             >
               Esqueceu sua senha?
             </button>
           )}
-          <Button type="submit" className="w-full">
-            {isLogin ? 'Entrar' : 'Cadastrar'}
+          <Button
+            type="submit"
+            className="w-full bg-[#7C3AED] hover:bg-[#a78bfa] text-white font-bold py-3 rounded-md transition"
+          >
+            {isResetting ? 'Enviar Link' : isLogin ? 'Entrar' : 'Cadastrar'}
           </Button>
         </form>
         <button
-          onClick={() => setIsLogin(!isLogin)}
-          className="w-full text-sm text-muted-foreground hover:text-foreground"
+          onClick={() => {
+            setIsLogin(!isLogin);
+            setIsResetting(false);
+          }}
+          className="mt-4 text-xs text-[#a78bfa] hover:text-white transition"
         >
-          {isLogin ? 'Não tem uma conta? Cadastre-se' : 'Já tem uma conta? Entre'}
+          {isLogin
+            ? 'Não tem uma conta? Cadastre-se'
+            : 'Já tem uma conta? Entre'}
         </button>
+        {isResetting && (
+          <button
+            type="button"
+            onClick={() => setIsResetting(false)}
+            className="mt-2 text-xs text-[#a78bfa] hover:text-white transition"
+          >
+            Voltar
+          </button>
+        )}
       </div>
     </div>
   );
