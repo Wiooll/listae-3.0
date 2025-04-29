@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useApp } from '../contexts/AppContext';
 import { ShoppingItem } from '../types';
@@ -42,14 +41,13 @@ const ProductTable: React.FC = () => {
   };
 
   const handleQuantityChange = (item: ShoppingItem, value: string) => {
-    const quantity = parseInt(value) || 1;
+    const quantity = parseInt(value) || 0;
     updateItem(item.id, { quantity });
   };
 
   const handlePriceChange = (item: ShoppingItem, value: string) => {
     const cleanValue = value.replace(/[^\d,.]/g, '').replace(',', '.');
-    const price = parseFloat(cleanValue) || 0;
-    updateItem(item.id, { price });
+    updateItem(item.id, { price: parseFloat(cleanValue) || 0 });
   };
 
   if (items.length === 0) {
@@ -116,17 +114,17 @@ const ProductTable: React.FC = () => {
               </td>
               <td className="py-2 px-2">
                 <Input
-                  type="number"
+                  type="text"
                   value={item.quantity}
                   onChange={(e) => handleQuantityChange(item, e.target.value)}
-                  min="1"
+                  min="0"
                   className="w-16 h-8 px-2 py-1"
                 />
               </td>
               <td className="py-2 px-2">
                 <Input
                   type="text"
-                  value={item.price.toFixed(2).replace('.', ',')}
+                  value={item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   onChange={(e) => handlePriceChange(item, e.target.value)}
                   className="w-20 h-8 px-2 py-1"
                   placeholder="0,00"

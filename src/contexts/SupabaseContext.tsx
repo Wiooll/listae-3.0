@@ -100,53 +100,62 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
             event: '*',
             schema: 'public',
             table: 'items',
-            filter: `list_id=in.(${lists.map(l => `'${l.id}'`).join(',')})`,
           },
           async (payload) => {
             console.log('Items change received:', payload);
             if (payload.eventType === 'INSERT') {
               const newItem = payload.new as any;
-              updateListsState(prev => prev.map(list => 
-                list.id === newItem.list_id
-                  ? {
-                      ...list,
-                      items: [...list.items, {
-                        id: newItem.id,
-                        name: newItem.name,
-                        quantity: newItem.quantity,
-                        price: newItem.price,
-                        checked: newItem.checked,
-                        createdAt: new Date(newItem.created_at).getTime(),
-                        updatedAt: new Date(newItem.updated_at).getTime(),
-                      }],
-                      updatedAt: Date.now(),
-                    }
-                  : list
-              ));
+              // Verificar se o item pertence a uma das listas do usuário
+              if (lists.some(list => list.id === newItem.list_id)) {
+                updateListsState(prev => prev.map(list => 
+                  list.id === newItem.list_id
+                    ? {
+                        ...list,
+                        items: [...list.items, {
+                          id: newItem.id,
+                          name: newItem.name,
+                          quantity: Number(newItem.quantity) || 0,
+                          price: Number(newItem.price) || 0,
+                          checked: newItem.checked,
+                          createdAt: new Date(newItem.created_at).getTime(),
+                          updatedAt: new Date(newItem.updated_at).getTime(),
+                        }],
+                        updatedAt: Date.now(),
+                      }
+                    : list
+                ));
+              }
             } else if (payload.eventType === 'DELETE') {
-              updateListsState(prev => prev.map(list => ({
-                ...list,
-                items: list.items.filter(item => item.id !== payload.old.id),
-                updatedAt: Date.now(),
-              })));
+              const deletedItem = payload.old as any;
+              // Verificar se o item pertence a uma das listas do usuário
+              if (lists.some(list => list.items.some(item => item.id === deletedItem.id))) {
+                updateListsState(prev => prev.map(list => ({
+                  ...list,
+                  items: list.items.filter(item => item.id !== deletedItem.id),
+                  updatedAt: Date.now(),
+                })));
+              }
             } else if (payload.eventType === 'UPDATE') {
               const updatedItem = payload.new as any;
-              updateListsState(prev => prev.map(list => ({
-                ...list,
-                items: list.items.map(item => 
-                  item.id === updatedItem.id
-                    ? {
-                        ...item,
-                        name: updatedItem.name,
-                        quantity: updatedItem.quantity,
-                        price: updatedItem.price,
-                        checked: updatedItem.checked,
-                        updatedAt: new Date(updatedItem.updated_at).getTime(),
-                      }
-                    : item
-                ),
-                updatedAt: Date.now(),
-              })));
+              // Verificar se o item pertence a uma das listas do usuário
+              if (lists.some(list => list.items.some(item => item.id === updatedItem.id))) {
+                updateListsState(prev => prev.map(list => ({
+                  ...list,
+                  items: list.items.map(item => 
+                    item.id === updatedItem.id
+                      ? {
+                          ...item,
+                          name: updatedItem.name,
+                          quantity: Number(updatedItem.quantity) || 0,
+                          price: Number(updatedItem.price) || 0,
+                          checked: updatedItem.checked,
+                          updatedAt: new Date(updatedItem.updated_at).getTime(),
+                        }
+                      : item
+                  ),
+                  updatedAt: Date.now(),
+                })));
+              }
             }
           }
         )
@@ -443,6 +452,13 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
 
     if (!listId || !originalItem) return;
 
+    // Garantir que o preço e quantidade sejam números válidos
+    const sanitizedUpdates = {
+      ...updates,
+      price: updates.price !== undefined ? (isNaN(updates.price) ? originalItem.price : updates.price) : undefined,
+      quantity: updates.quantity !== undefined ? (isNaN(updates.quantity) ? originalItem.quantity : updates.quantity) : undefined,
+    };
+
     // Otimistic update
     updateListsState(prev => prev.map(list =>
       list.id === listId
@@ -450,7 +466,7 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
             ...list,
             items: list.items.map(item =>
               item.id === itemId
-                ? { ...item, ...updates, updatedAt: Date.now() }
+                ? { ...item, ...sanitizedUpdates, updatedAt: Date.now() }
                 : item
             ),
             updatedAt: Date.now(),
@@ -462,7 +478,7 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase
         .from('items')
         .update({
-          ...updates,
+          ...sanitizedUpdates,
           updated_at: new Date().toISOString(),
         })
         .eq('id', itemId);
