@@ -37,7 +37,7 @@ const Header: React.FC = () => {
       <div className="max-w-3xl mx-auto mt-2">
         <h2 className="text-sm text-muted-foreground truncate">
           {activeList ? (
-            `${activeList.name} • ${new Date(activeList.updatedAt).toLocaleDateString('pt-BR')}`
+            `${activeList.name.replace(/\s*-\s*\d{2}\/\d{2}\/\d{4}\s*$/, '')} • ${new Date(activeList.updatedAt).toLocaleDateString('pt-BR')}`
           ) : (
             'Nenhuma lista selecionada'
           )}
