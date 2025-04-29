@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import {
@@ -57,66 +56,72 @@ const ListsModal: React.FC<ListsModalProps> = ({ isOpen, onClose }) => {
         </DialogHeader>
         
         <div className="py-4 max-h-[60vh] overflow-y-auto">
-          {lists.map(list => (
-            <div
-              key={list.id}
-              className={`flex items-center justify-between p-3 rounded-md mb-2 ${
-                list.id === activeList.id
-                  ? 'bg-primary/10 border border-primary/30'
-                  : 'hover:bg-secondary/50'
-              }`}
-            >
-              {editingListId === list.id ? (
-                <div className="flex flex-1 items-center gap-2">
-                  <Input
-                    value={editedName}
-                    onChange={(e) => setEditedName(e.target.value)}
-                    autoFocus
-                    className="flex-1"
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleSaveEdit(list.id)}
-                  >
-                    <Check className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <button
-                    className="flex-1 text-left py-1 px-2 rounded-md hover:bg-secondary/50"
-                    onClick={() => setActiveList(list.id)}
-                  >
-                    <div className="font-medium">{list.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(list.updatedAt).toLocaleDateString('pt-BR')} • 
-                      {list.items.length} {list.items.length === 1 ? 'item' : 'itens'}
-                    </div>
-                  </button>
-                  
-                  <div className="flex gap-1">
+          {lists.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              Nenhuma lista encontrada. Crie uma nova lista para começar.
+            </div>
+          ) : (
+            lists.map(list => (
+              <div
+                key={list.id}
+                className={`flex items-center justify-between p-3 rounded-md mb-2 ${
+                  activeList && list.id === activeList.id
+                    ? 'bg-primary/10 border border-primary/30'
+                    : 'hover:bg-secondary/50'
+                }`}
+              >
+                {editingListId === list.id ? (
+                  <div className="flex flex-1 items-center gap-2">
+                    <Input
+                      value={editedName}
+                      onChange={(e) => setEditedName(e.target.value)}
+                      autoFocus
+                      className="flex-1"
+                    />
                     <Button
                       size="sm"
-                      variant="ghost"
-                      onClick={() => handleEditList(list.id, list.name)}
+                      variant="outline"
+                      onClick={() => handleSaveEdit(list.id)}
                     >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive"
-                      onClick={() => handleDeleteList(list.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
+                      <Check className="h-4 w-4" />
                     </Button>
                   </div>
-                </>
-              )}
-            </div>
-          ))}
+                ) : (
+                  <>
+                    <button
+                      className="flex-1 text-left py-1 px-2 rounded-md hover:bg-secondary/50"
+                      onClick={() => setActiveList(list.id)}
+                    >
+                      <div className="font-medium">{list.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(list.updatedAt).toLocaleDateString('pt-BR')} • 
+                        {list.items.length} {list.items.length === 1 ? 'item' : 'itens'}
+                      </div>
+                    </button>
+                    
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleEditList(list.id, list.name)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive"
+                        onClick={() => handleDeleteList(list.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))
+          )}
         </div>
         
         <DialogFooter className="flex justify-between items-center">

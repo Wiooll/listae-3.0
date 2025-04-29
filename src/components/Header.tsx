@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Sun, Moon, ShoppingCart } from 'lucide-react';
@@ -37,7 +36,11 @@ const Header: React.FC = () => {
       
       <div className="max-w-3xl mx-auto mt-2">
         <h2 className="text-sm text-muted-foreground truncate">
-          {activeList.name} • {new Date(activeList.updatedAt).toLocaleDateString('pt-BR')}
+          {activeList ? (
+            `${activeList.name} • ${new Date(activeList.updatedAt).toLocaleDateString('pt-BR')}`
+          ) : (
+            'Nenhuma lista selecionada'
+          )}
         </h2>
       </div>
     </header>

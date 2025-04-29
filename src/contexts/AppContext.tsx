@@ -1,20 +1,13 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ShoppingList, ShoppingItem, SortOption, SortDirection, AppSettings, Currency } from '../types';
-import {
-  getLists,
-  saveLists,
-  getActiveListId,
-  setActiveListId,
-  getSettings,
-  saveSettings,
-  createDefaultList
-} from '../services/localStorageService';
+import { ShoppingList, ShoppingItem, SortOption, SortDirection, AppSettings } from '../types';
+import { getSettings, saveSettings } from '../services/localStorageService';
 import { toast } from '@/hooks/use-toast';
+import { useSupabase } from './SupabaseContext';
+import { useAuth } from './AuthContext';
 
 interface AppContextType {
   lists: ShoppingList[];
-  activeList: ShoppingList;
+  activeList: ShoppingList | null;
   settings: AppSettings;
   sortOption: SortOption;
   sortDirection: SortDirection;
@@ -45,98 +38,66 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [lists, setLists] = useState<ShoppingList[]>([]);
-  const [activeList, setActiveListState] = useState<ShoppingList>(createDefaultList());
+  const { user } = useAuth();
+  const supabase = useSupabase();
   const [settings, setSettings] = useState<AppSettings>(getSettings());
   const [sortOption, setSortOption] = useState<SortOption>(settings.defaultSort);
   const [sortDirection, setSortDirection] = useState<SortDirection>(settings.defaultSortDirection);
 
-  // Load lists from localStorage on mount
-  useEffect(() => {
-    const storedLists = getLists();
-    setLists(storedLists);
-    
-    // Get active list or create a default one if none exists
-    let currentListId = getActiveListId();
-    let currentList: ShoppingList | undefined;
-    
-    if (currentListId) {
-      currentList = storedLists.find(list => list.id === currentListId);
-    }
-    
-    if (!currentList && storedLists.length > 0) {
-      currentList = storedLists[0];
-      setActiveListId(currentList.id);
-    } else if (!currentList) {
-      currentList = createDefaultList();
-      setLists([currentList]);
-      saveLists([currentList]);
-      setActiveListId(currentList.id);
-    }
-    
-    setActiveListState(currentList);
-    
-    // Load sort settings
-    setSortOption(settings.defaultSort);
-    setSortDirection(settings.defaultSortDirection);
-  }, []);
-
   // List operations
   const addList = () => {
-    const newList = createDefaultList();
-    const updatedLists = [...lists, newList];
-    setLists(updatedLists);
-    saveLists(updatedLists);
-    setActiveList(newList.id);
-    toast({
-      title: "Nova lista criada",
-      description: `Lista "${newList.name}" criada com sucesso`,
+    const name = `Lista ${new Date().toLocaleDateString('pt-BR')}`;
+    supabase.addList(name).then(() => {
+      toast({
+        title: "Nova lista criada",
+        description: `Lista "${name}" criada com sucesso`,
+      });
+    }).catch(error => {
+      console.error('Erro ao criar lista:', error);
+      toast({
+        title: "Erro ao criar lista",
+        description: "Não foi possível criar a nova lista",
+        variant: "destructive",
+      });
     });
   };
 
   const updateList = (list: ShoppingList) => {
-    const updatedLists = lists.map(l => (l.id === list.id ? { ...list, updatedAt: Date.now() } : l));
-    setLists(updatedLists);
-    saveLists(updatedLists);
-    
-    if (activeList.id === list.id) {
-      setActiveListState({ ...list, updatedAt: Date.now() });
-    }
-    
-    toast({
-      title: "Lista atualizada",
-      description: `Lista "${list.name}" atualizada com sucesso`,
+    supabase.updateList(list).then(() => {
+      toast({
+        title: "Lista atualizada",
+        description: `Lista "${list.name}" atualizada com sucesso`,
+      });
+    }).catch(error => {
+      console.error('Erro ao atualizar lista:', error);
+      toast({
+        title: "Erro ao atualizar lista",
+        description: "Não foi possível atualizar a lista",
+        variant: "destructive",
+      });
     });
   };
 
   const deleteListImpl = (listId: string) => {
-    const updatedLists = lists.filter(list => list.id !== listId);
-    setLists(updatedLists);
-    saveLists(updatedLists);
-    
-    // If the active list is deleted, set the first list as active
-    if (activeList.id === listId) {
-      if (updatedLists.length > 0) {
-        setActiveList(updatedLists[0].id);
-      } else {
-        const newList = createDefaultList();
-        setLists([newList]);
-        saveLists([newList]);
-        setActiveList(newList.id);
-      }
-    }
-    
-    toast({
-      title: "Lista removida",
-      description: "Lista removida com sucesso",
+    supabase.deleteList(listId).then(() => {
+      toast({
+        title: "Lista removida",
+        description: "Lista removida com sucesso",
+      });
+    }).catch(error => {
+      console.error('Erro ao deletar lista:', error);
+      toast({
+        title: "Erro ao remover lista",
+        description: "Não foi possível remover a lista",
+        variant: "destructive",
+      });
     });
   };
 
   const setActiveList = (listId: string) => {
-    const list = lists.find(list => list.id === listId);
+    supabase.setActiveList(listId);
+    const list = supabase.lists.find(list => list.id === listId);
     if (list) {
-      setActiveListState(list);
-      setActiveListId(listId);
       toast({
         title: "Lista selecionada",
         description: `Lista "${list.name}" selecionada`,
@@ -146,75 +107,100 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Item operations
   const addItem = (item: ShoppingItem) => {
-    const updatedItems = [...activeList.items, item];
-    const updatedList = { ...activeList, items: updatedItems, updatedAt: Date.now() };
+    if (!supabase.activeList) return;
     
-    setActiveListState(updatedList);
-    updateList(updatedList);
-    
-    toast({
-      title: "Item adicionado",
-      description: `"${item.name}" adicionado à lista`,
+    supabase.addItem(item, supabase.activeList.id).then(() => {
+      toast({
+        title: "Item adicionado",
+        description: `"${item.name}" adicionado à lista`,
+      });
+    }).catch(error => {
+      console.error('Erro ao adicionar item:', error);
+      toast({
+        title: "Erro ao adicionar item",
+        description: "Não foi possível adicionar o item à lista",
+        variant: "destructive",
+      });
     });
   };
 
   const updateItem = (itemId: string, updates: Partial<ShoppingItem>) => {
-    const updatedItems = activeList.items.map(item => 
-      item.id === itemId ? { ...item, ...updates } : item
-    );
-    
-    const updatedList = { ...activeList, items: updatedItems, updatedAt: Date.now() };
-    setActiveListState(updatedList);
-    updateList(updatedList);
+    supabase.updateItem(itemId, updates).catch(error => {
+      console.error('Erro ao atualizar item:', error);
+      toast({
+        title: "Erro ao atualizar item",
+        description: "Não foi possível atualizar o item",
+        variant: "destructive",
+      });
+    });
   };
 
   const deleteItem = (itemId: string) => {
-    const itemToDelete = activeList.items.find(item => item.id === itemId);
-    const updatedItems = activeList.items.filter(item => item.id !== itemId);
-    const updatedList = { ...activeList, items: updatedItems, updatedAt: Date.now() };
-    
-    setActiveListState(updatedList);
-    updateList(updatedList);
-    
-    if (itemToDelete) {
+    const item = supabase.activeList?.items.find(item => item.id === itemId);
+    supabase.deleteItem(itemId).then(() => {
+      if (item) {
+        toast({
+          title: "Item removido",
+          description: `"${item.name}" removido da lista`,
+        });
+      }
+    }).catch(error => {
+      console.error('Erro ao deletar item:', error);
       toast({
-        title: "Item removido",
-        description: `"${itemToDelete.name}" removido da lista`,
+        title: "Erro ao remover item",
+        description: "Não foi possível remover o item",
+        variant: "destructive",
+      });
+    });
+  };
+
+  const toggleItemCheck = (itemId: string) => {
+    const item = supabase.activeList?.items.find(item => item.id === itemId);
+    if (item) {
+      supabase.toggleItemCheck(itemId, !item.checked).catch(error => {
+        console.error('Erro ao marcar/desmarcar item:', error);
+        toast({
+          title: "Erro ao marcar/desmarcar item",
+          description: "Não foi possível atualizar o status do item",
+          variant: "destructive",
+        });
       });
     }
   };
 
-  const toggleItemCheck = (itemId: string) => {
-    const updatedItems = activeList.items.map(item => 
-      item.id === itemId ? { ...item, checked: !item.checked } : item
-    );
-    
-    const updatedList = { ...activeList, items: updatedItems, updatedAt: Date.now() };
-    setActiveListState(updatedList);
-    updateList(updatedList);
-  };
-
   const clearCheckedItems = () => {
-    const uncheckedItems = activeList.items.filter(item => !item.checked);
-    const updatedList = { ...activeList, items: uncheckedItems, updatedAt: Date.now() };
+    if (!supabase.activeList) return;
     
-    setActiveListState(updatedList);
-    updateList(updatedList);
-    
-    toast({
-      title: "Itens comprados removidos",
-      description: "Todos os itens marcados como comprados foram removidos da lista",
+    supabase.clearCheckedItems(supabase.activeList.id).then(() => {
+      toast({
+        title: "Itens comprados removidos",
+        description: "Todos os itens marcados como comprados foram removidos da lista",
+      });
+    }).catch(error => {
+      console.error('Erro ao limpar itens marcados:', error);
+      toast({
+        title: "Erro ao remover itens",
+        description: "Não foi possível remover os itens marcados",
+        variant: "destructive",
+      });
     });
   };
 
   const clearAllItems = () => {
-    const updatedList = { ...activeList, items: [], updatedAt: Date.now() };
-    setActiveListState(updatedList);
-    updateList(updatedList);
+    if (!supabase.activeList) return;
     
-    toast({
-      title: "Lista limpa",
-      description: "Todos os itens foram removidos da lista",
+    supabase.clearAllItems(supabase.activeList.id).then(() => {
+      toast({
+        title: "Lista limpa",
+        description: "Todos os itens foram removidos da lista",
+      });
+    }).catch(error => {
+      console.error('Erro ao limpar todos os itens:', error);
+      toast({
+        title: "Erro ao limpar lista",
+        description: "Não foi possível remover todos os itens",
+        variant: "destructive",
+      });
     });
   };
 
@@ -223,6 +209,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updatedSettings = { ...settings, ...newSettings };
     setSettings(updatedSettings);
     saveSettings(updatedSettings);
+    
+    if (newSettings.defaultSort) {
+      setSortOption(newSettings.defaultSort);
+    }
+    if (newSettings.defaultSortDirection) {
+      setSortDirection(newSettings.defaultSortDirection);
+    }
+    
+    toast({
+      title: "Configurações atualizadas",
+      description: "Suas preferências foram salvas com sucesso",
+    });
   };
 
   const updateSortOption = (option: SortOption) => {
@@ -233,27 +231,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSortDirection(direction);
   };
 
-  // Helper functions
+  // Utility functions
   const getTotal = () => {
-    return activeList.items.reduce((total, item) => total + (item.price * item.quantity), 0);
+    if (!supabase.activeList) return 0;
+    return supabase.activeList.items.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
   const getCheckedTotal = () => {
-    return activeList.items
+    if (!supabase.activeList) return 0;
+    return supabase.activeList.items
       .filter(item => item.checked)
       .reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
   const getSortedItems = () => {
-    return [...activeList.items].sort((a, b) => {
+    if (!supabase.activeList) return [];
+    
+    return [...supabase.activeList.items].sort((a, b) => {
       let comparison = 0;
       
-      if (sortOption === 'name') {
-        comparison = a.name.localeCompare(b.name);
-      } else if (sortOption === 'price') {
-        comparison = (a.price * a.quantity) - (b.price * b.quantity);
-      } else if (sortOption === 'quantity') {
-        comparison = a.quantity - b.quantity;
+      switch (sortOption) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'price':
+          comparison = (a.price * a.quantity) - (b.price * b.quantity);
+          break;
+        case 'checked':
+          comparison = (a.checked === b.checked) ? 0 : a.checked ? 1 : -1;
+          break;
+        default:
+          comparison = 0;
       }
       
       return sortDirection === 'asc' ? comparison : -comparison;
@@ -261,24 +269,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const formatCurrency = (value: number) => {
-    if (isNaN(value)) return '—';
-    
-    const options: Intl.NumberFormatOptions = {
+    return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
-      currency: settings.currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    };
-    
-    const formatter = new Intl.NumberFormat('pt-BR', options);
-    return formatter.format(value);
+      currency: settings.currency
+    }).format(value);
   };
 
   return (
     <AppContext.Provider
       value={{
-        lists,
-        activeList,
+        lists: supabase.lists,
+        activeList: supabase.activeList,
         settings,
         sortOption,
         sortDirection,
