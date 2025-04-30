@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { EditableItemName } from './EditableItemName';
 
 interface ListItemsProps {
   listId: string;
@@ -41,6 +42,13 @@ export function ListItems({ listId }: ListItemsProps) {
 
   const handleToggleCheck = (id: string, checked: boolean) => {
     toggleChecked({ id, checked });
+  };
+
+  const handleUpdateName = (id: string, name: string) => {
+    updateItem({
+      id,
+      updates: { name }
+    });
   };
 
   const handleUpdatePrice = (id: string, price: string) => {
@@ -107,7 +115,7 @@ export function ListItems({ listId }: ListItemsProps) {
         {items.map((item) => (
           <div
             key={item.id}
-            className="flex items-center gap-4 p-2 rounded-lg border"
+            className="flex items-center gap-4 p-2 rounded-lg border group"
           >
             <Checkbox
               checked={item.checked}
@@ -116,9 +124,12 @@ export function ListItems({ listId }: ListItemsProps) {
               }
             />
             
-            <span className={item.checked ? 'line-through text-muted-foreground' : ''}>
-              {item.name}
-            </span>
+            <EditableItemName
+              name={item.name}
+              checked={item.checked}
+              isUpdating={isUpdating}
+              onUpdate={(newName) => handleUpdateName(item.id, newName)}
+            />
 
             <div className="ml-auto flex items-center gap-2">
               <Input
