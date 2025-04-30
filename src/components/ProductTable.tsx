@@ -5,6 +5,7 @@ import { Check, Trash2, ArrowDown, ArrowUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { CurrencyInput } from '@/components/ui/currency-input';
 
 const ProductTable: React.FC = () => {
   const {
@@ -43,11 +44,6 @@ const ProductTable: React.FC = () => {
   const handleQuantityChange = (item: ShoppingItem, value: string) => {
     const quantity = parseInt(value) || 0;
     updateItem(item.id, { quantity });
-  };
-
-  const handlePriceChange = (item: ShoppingItem, value: string) => {
-    const cleanValue = value.replace(/[^\d,.]/g, '').replace(',', '.');
-    updateItem(item.id, { price: parseFloat(cleanValue) || 0 });
   };
 
   if (items.length === 0) {
@@ -122,12 +118,10 @@ const ProductTable: React.FC = () => {
                 />
               </td>
               <td className="py-2 px-2">
-                <Input
-                  type="text"
-                  value={item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  onChange={(e) => handlePriceChange(item, e.target.value)}
-                  className="w-20 h-8 px-2 py-1"
-                  placeholder="0,00"
+                <CurrencyInput
+                  value={item.price}
+                  onChange={(value) => updateItem(item.id, { price: value })}
+                  className="w-28 h-8 px-2 py-1"
                 />
               </td>
               <td className="py-2 px-2 text-right">
